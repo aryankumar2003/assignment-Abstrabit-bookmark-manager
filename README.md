@@ -1,42 +1,71 @@
 # Bookmark Manager
 
-A simple, real-time bookmark manager built with Next.js, Supabase, and Tailwind CSS.
+A generic, real-time bookmark manager application built to demonstrate modern web development practices.
 
-## Features
+## Overview
 
-- **Google Authentication**: secure sign-in via Google OAuth.
-- **Real-time Updates**: changes reflect instantly across devices/tabs without refresh.
-- **Private Bookmarks**: users can only see and manage their own bookmarks.
-- **Clean UI**: styled with Tailwind CSS and dark mode support.
+This application allows users to store and manage their personal bookmarks. It features:
+- **Google Authentication**: Secure login integrated with Supabase Auth.
+- **Private Storage**: Bookmarks are protected by Row Level Security (RLS), ensuring users only see their own data.
+- **Real-time Updates**: The bookmark list updates instantly across all devices and tabs when changes occur.
+- **Responsive Design**: A clean, modern UI styled with Tailwind CSS that supports dark mode.
+
+## Tech Stack
+
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **Backend & Auth**: [Supabase](https://supabase.com/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Language**: TypeScript
 
 ## Getting Started
 
-### 1. Supabase Setup
+### 1. Prerequisites
 
-Follow the detailed instructions in [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) to create your project and database schema.
+- Node.js installed on your machine.
+- A Supabase project with a configured database and Google Authentication enabled.
 
-### 2. Environment Variables
+### 2. Environment Setup
 
-Copy `.env.local.example` to `.env.local` and add your Supabase credentials:
+Create a `.env.local` file in the root directory and add your Supabase credentials:
 
 ```bash
-cp .env.local.example .env.local
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 3. Run Locally
+### 3. Installation & Running
+
+Install dependencies and start the development server:
 
 ```bash
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Deployment on Vercel
+## Database Schema
 
-1.  Push your code to a Git repository (GitHub, GitLab, Bitbucket).
-2.  Import the project into [Vercel](https://vercel.com/new).
-3.  Add the Environment Variables in Vercel Project Settings:
-    - `NEXT_PUBLIC_SUPABASE_URL`
-    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4.  Deploy!
-5.  **Important**: detailed in `SUPABASE_SETUP.md`, ensure you add your production URL (e.g., `https://your-app.vercel.app/auth/callback`) to your Google Cloud Console Authorized Redirect URIs.
+For the application to function correctly, your Supabase database should have a `bookmarks` table with the following schema:
+
+```sql
+create table public.bookmarks (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  url text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table public.bookmarks enable row level security;
+
+-- Policy: Users see only their own bookmarks
+create policy "Users can fully manage their own bookmarks"
+on public.bookmarks for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+-- Enable Realtime
+alter publication supabase_realtime add table bookmarks;
+```
