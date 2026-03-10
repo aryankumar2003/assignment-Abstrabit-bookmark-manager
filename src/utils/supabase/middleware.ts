@@ -7,6 +7,8 @@ export async function updateSession(request: NextRequest) {
     })
 
     // createServerClient needs to be able to modify cookies for refresh flow
+    // NOTE: we use getSession() here (local JWT decode, no network call) instead
+    // of getUser() to avoid a Supabase auth server roundtrip on every request.
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -31,11 +33,11 @@ export async function updateSession(request: NextRequest) {
     )
 
     const {
-        data: { user },
-    } = await supabase.auth.getUser()
+        data: { session },
+    } = await supabase.auth.getSession()
 
     if (
-        !user &&
+        !session &&
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth')
     ) {
